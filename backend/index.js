@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const cron = require('node-cron');
 
 const websites = [
     {
@@ -8,7 +9,7 @@ const websites = [
         selector: '.home-latest-news-item__title',
         baseUrl: 'https://crypto.news/',
     },
-        {
+    {
         name: 'CoinDesk',
         url: 'https://www.coindesk.com/',
         selector: '.font-headline-xs',
@@ -38,8 +39,6 @@ async function scrapeWebsite({ url, selector, baseUrl }) {
         const data = await fetchWithRetry(url);
         const $ = cheerio.load(data);
 
-        console.log($.html());
-
         const articles = [];
 
         $(selector).each((index, element) => {
@@ -47,10 +46,20 @@ async function scrapeWebsite({ url, selector, baseUrl }) {
             const linkElement = $(element).closest('a');
             const link = linkElement.attr('href');
 
+            // Scrape additional data
+            const publishDate = $(element).closest('.article').find('.publish-date').text().trim();
+            const author = $(element).closest('.article').find('.author').text().trim();
+            const summary = $(element).closest('.article').find('.summary').text().trim();
+            const thumbnail = $(element).closest('.article').find('img').attr('src');
+
             if (headline && link) {
                 articles.push({
                     headline,
                     link: link.startsWith('http') ? link : `${baseUrl}${link}`,
+                    publishDate,
+                    author,
+                    summary,
+                    thumbnail,
                 });
             }
         });
@@ -75,15 +84,9 @@ async function scrapeAllWebsites() {
     console.log(allArticles);
 }
 
+cron.schedule('0 * * * *', () => {
+    console.log('Running scraper...');
+    scrapeAllWebsites();
+});
+
 scrapeAllWebsites();
-
-
-
-
-
-
-
-
-
-
-
