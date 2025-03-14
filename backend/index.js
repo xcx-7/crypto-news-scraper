@@ -8,12 +8,12 @@ const websites = [
         selector: '.home-latest-news-item__title',
         baseUrl: 'https://crypto.news/',
     },
-    //     {
-    //     name: 'CoinDesk',
-    //     url: 'https://www.coindesk.com/',
-    //     selector: '.font-headline-xs',
-    //     baseUrl: 'https://www.coindesk.com',
-    // },
+        {
+        name: 'CoinDesk',
+        url: 'https://www.coindesk.com/',
+        selector: '.font-headline-xs',
+        baseUrl: 'https://www.coindesk.com',
+    },
 ];
 
 const headers = {
