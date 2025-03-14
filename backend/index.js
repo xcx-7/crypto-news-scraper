@@ -23,7 +23,7 @@ async function scrapeNews() {
                 });
             }
         });
-        
+
         console.log(articles);
     } catch (error) {
         console.error('Error fetching data:', error);
