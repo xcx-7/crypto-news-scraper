@@ -1,37 +1,64 @@
-const puppeteer = require('puppeteer');
+require('dotenv').config();
+const { TwitterApi } = require('twitter-api-v2');
 
-async function scrapeCryptoTweets() {
-    let browser;
-    try {
-        browser = await puppeteer.launch({ headless: true });
-        const page = await browser.newPage();
+const client = new TwitterApi(process.env.BEARER_TOKEN);
 
-        const searchQuery = "crypto";
-        const url = `https://nitter.net/search?q=${encodeURIComponent(searchQuery)}&f=crypto&f=tweets`;
+// const client = new TwitterApi({
+//     appKey: process.env.API_KEY,
+//     appSecret: process.env.API_KEY_SECRET,
+//     accessToken: process.env.ACCESS_TOKEN,
+//     accessSecret: process.env.ACCESS_TOKEN_SECRET
+//   });
 
-        await page.goto(url, { waitUntil: 'networkidle2' });
+// async function getCryptoTweets() {
+//     try {
+//       const query = 'crypto OR bitcoin OR ethereum OR blockchain OR web3 -filter:retweets';
+      
+//       const response = await client.v2.search(query, {
+//         max_results: 10, 
+//         'tweet.fields': 'created_at,entities'
+//       });
+  
+//       const tweets = response.data.map(tweet => {
+//         const tweetText = tweet.text.split('\n')[0]; 
+//         const tweetSnippet = tweet.text.length > 100 ? tweet.text.slice(0, 100) + '...' : tweet.text; // Short snippet
+//         const tweetLink = `https://twitter.com/i/web/status/${tweet.id}`; 
+        
+//         return {
+//           headline: tweetText,
+//           snippet: tweetSnippet,
+//           link: tweetLink
+//         };
+//       });
+  
+//       console.log(tweets);
+//     } catch (error) {
+//       console.error('Error fetching tweets:', error);
+//     }
+//   }
+  
 
-        for (let i = 0; i < 3; i++) {
-            await page.evaluate(() => {
-                window.scrollBy(0, window.innerHeight);
-            });
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for tweets to load
-        }
 
-        const tweets = await page.evaluate(() => {
-            const tweetElements = document.querySelectorAll('.timeline-item');
-            return Array.from(tweetElements).map(tweet => tweet.innerText.trim());
-        });
 
-        console.log('Latest Crypto Tweets:');
-        console.log(tweets);
-    } catch (error) {
-        console.error('Error scraping tweets:', error);
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
+async function getCryptoTweets() {
+  try {
+    const query = 'crypto OR bitcoin OR ethereum OR blockchain OR web3';
+    
+    const response = await client.v2.search(query, {
+      max_results: 10,
+      'tweet.fields': 'created_at,entities'
+    });
+
+    const tweets = response.data.map(tweet => ({
+      headline: tweet.text.split('\n')[0],
+      snippet: tweet.text.length > 100 ? tweet.text.slice(0, 100) + '...' : tweet.text,
+      link: `https://twitter.com/i/web/status/${tweet.id}`
+    }));
+
+    console.log(tweets);
+  } catch (error) {
+    console.error('Error fetching tweets:', error);
+  }
 }
 
-scrapeCryptoTweets();
+  getCryptoTweets();
