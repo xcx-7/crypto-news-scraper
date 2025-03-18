@@ -1,36 +1,37 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const cron = require('node-cron');
+const axios = require("axios");
+const cheerio = require("cheerio");
+const cron = require("node-cron");
 const mongoose = require("mongoose");
+const News = require("./newsSchema"); 
 
 const MONGO_URI = "mongodb+srv://kritiakter0:x3v1YKTpF3PlcCF5@cluster0.zniow.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-// x3v1YKTpF3PlcCF5
-
-mongoose.connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => console.log("Connected to MongoDB"))
-.catch((err) => console.error("MongoDB connection error:", err));
+mongoose
+    .connect(MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    })
+    .then(() => console.log("✅ Connected to MongoDB"))
+    .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 const websites = [
     {
-        name: 'CryptoNews',
-        url: 'https://crypto.news/',
-        selector: '.home-latest-news-item__title',
-        baseUrl: 'https://crypto.news/',
+        name: "CryptoNews",
+        url: "https://crypto.news/",
+        selector: ".home-latest-news-item__title",
+        baseUrl: "https://crypto.news/",
     },
     {
-        name: 'CoinDesk',
-        url: 'https://www.coindesk.com/',
-        selector: '.font-headline-xs',
-        baseUrl: 'https://www.coindesk.com',
+        name: "CoinDesk",
+        url: "https://www.coindesk.com/",
+        selector: ".font-headline-xs",
+        baseUrl: "https://www.coindesk.com",
     },
 ];
 
 const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
 };
 
 async function fetchWithRetry(url, retries = 3) {
@@ -40,8 +41,8 @@ async function fetchWithRetry(url, retries = 3) {
             return data;
         } catch (error) {
             if (i === retries - 1) throw error;
-            console.warn(`Retrying... (${i + 1}/${retries})`);
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
+            console.warn(`⚠️ Retrying... (${i + 1}/${retries})`);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
         }
     }
 }
@@ -55,19 +56,23 @@ async function scrapeWebsite({ url, selector, baseUrl }) {
 
         $(selector).each((index, element) => {
             const headline = $(element).text().trim();
-            const linkElement = $(element).closest('a');
-            const link = linkElement.attr('href');
+            const linkElement = $(element).closest("a");
+            const link = linkElement.attr("href");
 
-            // Scrape additional data
-            const publishDate = $(element).closest('.article').find('.publish-date').text().trim();
-            const author = $(element).closest('.article').find('.author').text().trim();
-            const summary = $(element).closest('.article').find('.summary').text().trim();
-            const thumbnail = $(element).closest('.article').find('img').attr('src');
+            // Scrape additional data safely
+            const publishDate =
+                $(element).closest(".article").find(".publish-date").text().trim() || "Unknown";
+            const author =
+                $(element).closest(".article").find(".author").text().trim() || "Unknown";
+            const summary =
+                $(element).closest(".article").find(".summary").text().trim() || "No summary available";
+            const thumbnail =
+                $(element).closest(".article").find("img").attr("src") || "";
 
             if (headline && link) {
                 articles.push({
                     headline,
-                    link: link.startsWith('http') ? link : `${baseUrl}${link}`,
+                    link: link.startsWith("http") ? link : `${baseUrl}${link}`,
                     publishDate,
                     author,
                     summary,
@@ -78,27 +83,51 @@ async function scrapeWebsite({ url, selector, baseUrl }) {
 
         return articles;
     } catch (error) {
-        console.error(`Error scraping ${url}:`, error);
+        console.error(`❌ Error scraping ${url}:`, error);
         return [];
     }
 }
 
-async function scrapeAllWebsites() {
-    const allArticles = [];
+async function saveNewsToDB(newsArticles) {
+    for (const article of newsArticles) {
+        try {
+            const exists = await News.exists({ link: article.link });
+
+            if (!exists) {
+                await News.create(article);
+                console.log(`✅ Saved: ${article.headline}`);
+            } else {
+                console.log(`⏭️ Skipped (already in DB): ${article.headline}`);
+            }
+        } catch (error) {
+            console.error("❌ Error saving article:", error);
+        }
+    }
+}
+
+async function scrapeAndSaveNews() {
+    console.log("🔍 Scraping latest crypto news...");
+
+    let allArticles = [];
 
     for (const website of websites) {
-        console.log(`Scraping ${website.name}...`);
+        console.log(`🌐 Scraping ${website.name}...`);
         const articles = await scrapeWebsite(website);
         allArticles.push(...articles);
     }
 
-    console.log('Latest Crypto News:');
-    console.log(allArticles);
+    console.log(`📜 Total Articles Found: ${allArticles.length}`);
+
+    if (allArticles.length > 0) {
+        await saveNewsToDB(allArticles);
+    } else {
+        console.log("❌ No new articles found.");
+    }
 }
 
-cron.schedule('0 * * * *', () => {
-    console.log('Running scraper...');
-    scrapeAllWebsites();
+cron.schedule("0 * * * *", () => {
+    console.log("⏳ Running scheduled scraper...");
+    scrapeAndSaveNews();
 });
 
-scrapeAllWebsites();
+scrapeAndSaveNews();
