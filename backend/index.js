@@ -1,6 +1,18 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cron = require('node-cron');
+const mongoose = require("mongoose");
+
+const MONGO_URI = "mongodb+srv://kritiakter0:x3v1YKTpF3PlcCF5@cluster0.zniow.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+// x3v1YKTpF3PlcCF5
+
+mongoose.connect(MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log("Connected to MongoDB"))
+.catch((err) => console.error("MongoDB connection error:", err));
 
 const websites = [
     {
