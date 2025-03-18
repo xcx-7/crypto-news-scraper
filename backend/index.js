@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const News = require("./newsSchema"); 
 const express = require("express");
 const cors = require("cors");
+const PORT = 5000; 
 
 const app = express();
 app.use(cors()); 
@@ -19,6 +20,16 @@ mongoose
     })
     .then(() => console.log("✅ Connected to MongoDB"))
     .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+    app.get("/api/news", async (req, res) => {
+        try {
+            const news = await News.find().sort({ _id: -1 }).limit(20); // Fetch latest 20 articles
+            res.json(news);
+        } catch (error) {
+            console.error("❌ Error fetching news:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
 
 const websites = [
     {
@@ -137,3 +148,5 @@ cron.schedule("0 * * * *", () => {
 });
 
 scrapeAndSaveNews();
+
+app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
