@@ -3,6 +3,12 @@ const cheerio = require("cheerio");
 const cron = require("node-cron");
 const mongoose = require("mongoose");
 const News = require("./newsSchema"); 
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+app.use(cors()); 
+app.use(express.json());
 
 const MONGO_URI = "mongodb+srv://kritiakter0:x3v1YKTpF3PlcCF5@cluster0.zniow.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
