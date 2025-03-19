@@ -5,50 +5,31 @@ const mongoose = require("mongoose");
 const News = require("./newsSchema"); 
 const express = require("express");
 const cors = require("cors");
-const PORT = 5000; 
+const PORT = 5000;
 
 const app = express();
-app.use(cors()); 
+app.use(cors());
 app.use(express.json());
 
 const MONGO_URI = "mongodb+srv://kritiakter0:x3v1YKTpF3PlcCF5@cluster0.zniow.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-mongoose
-    .connect(MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    })
+mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("✅ Connected to MongoDB"))
     .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-    app.get("/api/news", async (req, res) => {
-        try {
-            const news = await News.find().sort({ _id: -1 }).limit(20); // Fetch latest 20 articles
-            res.json(news);
-        } catch (error) {
-            console.error("❌ Error fetching news:", error);
-            res.status(500).json({ error: "Internal Server Error" });
-        }
-    });
-
-const websites = [
-    {
-        name: "CryptoNews",
-        url: "https://crypto.news/",
-        selector: ".home-latest-news-item__title",
-        baseUrl: "https://crypto.news/",
-    },
-    {
-        name: "CoinDesk",
-        url: "https://www.coindesk.com/",
-        selector: ".font-headline-xs",
-        baseUrl: "https://www.coindesk.com",
-    },
-];
+// API Endpoint to get news
+app.get("/api/news", async (req, res) => {
+    try {
+        const news = await News.find().sort({ _id: -1 }).limit(20);
+        res.json(news);
+    } catch (error) {
+        console.error("❌ Error fetching news:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
 const headers = {
-    "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
 };
 
 async function fetchWithRetry(url, retries = 3) {
@@ -64,43 +45,56 @@ async function fetchWithRetry(url, retries = 3) {
     }
 }
 
-async function scrapeWebsite({ url, selector, baseUrl }) {
+// Scraper for CryptoNews
+async function scrapeCryptoNews() {
+    const url = "https://crypto.news/";
     try {
         const data = await fetchWithRetry(url);
         const $ = cheerio.load(data);
-
         const articles = [];
 
-        $(selector).each((index, element) => {
+        $(".home-latest-news-item__title").each((index, element) => {
             const headline = $(element).text().trim();
-            const linkElement = $(element).closest("a");
-            const link = linkElement.attr("href");
-
-            // Scrape additional data safely
-            const publishDate =
-                $(element).closest(".article").find(".publish-date").text().trim() || "Unknown";
-            const author =
-                $(element).closest(".article").find(".author").text().trim() || "Unknown";
-            const summary =
-                $(element).closest(".article").find(".summary").text().trim() || "No summary available";
-            const thumbnail =
-                $(element).closest(".article").find("img").attr("src") || "";
-
+            const link = $(element).closest("a").attr("href") || "";
+            
             if (headline && link) {
                 articles.push({
                     headline,
-                    link: link.startsWith("http") ? link : `${baseUrl}${link}`,
-                    publishDate,
-                    author,
-                    summary,
-                    thumbnail,
+                    link: link.startsWith("http") ? link : `${url}${link}`,
+                    source: "CryptoNews"
                 });
             }
         });
-
         return articles;
     } catch (error) {
-        console.error(`❌ Error scraping ${url}:`, error);
+        console.error("❌ Error scraping CryptoNews:", error);
+        return [];
+    }
+}
+
+// Scraper for CoinDesk
+async function scrapeCoinDesk() {
+    const url = "https://www.coindesk.com/";
+    try {
+        const data = await fetchWithRetry(url);
+        const $ = cheerio.load(data);
+        const articles = [];
+
+        $(".font-headline-xs").each((index, element) => {
+            const headline = $(element).text().trim();
+            const link = $(element).closest("a").attr("href") || "";
+            
+            if (headline && link) {
+                articles.push({
+                    headline,
+                    link: link.startsWith("http") ? link : `${url}${link}`,
+                    source: "CoinDesk"
+                });
+            }
+        });
+        return articles;
+    } catch (error) {
+        console.error("❌ Error scraping CoinDesk:", error);
         return [];
     }
 }
@@ -109,7 +103,6 @@ async function saveNewsToDB(newsArticles) {
     for (const article of newsArticles) {
         try {
             const exists = await News.exists({ link: article.link });
-
             if (!exists) {
                 await News.create(article);
                 console.log(`✅ Saved: ${article.headline}`);
@@ -124,17 +117,14 @@ async function saveNewsToDB(newsArticles) {
 
 async function scrapeAndSaveNews() {
     console.log("🔍 Scraping latest crypto news...");
+    const allArticles = [];
 
-    let allArticles = [];
-
-    for (const website of websites) {
-        console.log(`🌐 Scraping ${website.name}...`);
-        const articles = await scrapeWebsite(website);
-        allArticles.push(...articles);
-    }
+    const cryptoNews = await scrapeCryptoNews();
+    const coinDeskNews = await scrapeCoinDesk();
+    
+    allArticles.push(...cryptoNews, ...coinDeskNews);
 
     console.log(`📜 Total Articles Found: ${allArticles.length}`);
-
     if (allArticles.length > 0) {
         await saveNewsToDB(allArticles);
     } else {
