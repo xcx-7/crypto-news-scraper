@@ -8,6 +8,7 @@ const scrapeCoinDesk = require("./scrapers/coinDesk");
 const saveNewsToDB = require("./utils/saveNewsToDB");
 const News = require("./models/newsSchema");
 
+
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
