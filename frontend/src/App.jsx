@@ -27,7 +27,8 @@ const App = () => {
                         </h3>
                         <p><strong>Source:</strong> {article.source || "Unknown"}</p>
                         <p><strong>Author:</strong> {article.author || "Unknown"}</p>
-                        <p><strong>Published:</strong> {new Date(article.publishDate).toLocaleString() || "Unknown"}</p>
+                        {/* <p><strong>Published:</strong> {new Date(article.publishDate).toLocaleString() || "Unknown"}</p> */}
+                        <p><strong>Published:</strong> {article.publishDate || "Unknown"}</p>
 
                         <p>{article.summary}</p>
                         {article.thumbnail && (
