@@ -5,9 +5,11 @@ const App = () => {
 
     useEffect(() => {
         fetch("http://localhost:5000/api/news")
+        
             .then((res) => res.json())
             .then((data) => setNews(data))
             .catch((error) => console.error("Error fetching news:", error));
+
     }, []);
 
     return (
@@ -23,8 +25,10 @@ const App = () => {
                                 {article.headline}
                             </a>
                         </h3>
-                        <p><strong>Author:</strong> {article.author}</p>
-                        <p><strong>Date:</strong> {article.publishDate}</p>
+                        <p><strong>Source:</strong> {article.source || "Unknown"}</p>
+                        <p><strong>Author:</strong> {article.author || "Unknown"}</p>
+                        <p><strong>Published:</strong> {new Date(article.publishDate).toLocaleString() || "Unknown"}</p>
+
                         <p>{article.summary}</p>
                         {article.thumbnail && (
                             <img src={article.thumbnail} alt="Thumbnail" style={{ width: "150px", height: "auto" }} />
